@@ -61,12 +61,13 @@ thread_schedule(void)
 void 
 thread_init(void)
 {
+  uthread_init((int)thread_schedule);
   // Initialize main thread as thread 0
   current_thread = &all_thread[0];
   current_thread->state = RUNNING;
   
   // Start timer interrupt redirection LAST
-  uthread_init((int)thread_schedule);
+  
 }
 
 void 
@@ -105,7 +106,7 @@ main(int argc, char *argv[])
   thread_create(mythread);
   thread_create(mythread);
   
-  // Set main thread to FREE so it's not scheduled again
+  // Set main thrㄴead to FREE so it's not scheduled again
   current_thread->state = FREE;
   thread_schedule();
   exit();
