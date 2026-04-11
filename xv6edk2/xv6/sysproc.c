@@ -109,3 +109,14 @@ sys_wait2(void)
     return -1;
   return wait2(pid);
 }
+
+int
+sys_uthread_init(void)
+{
+  int address;
+  if(argint(0, &address) < 0)
+    return -1;
+  myproc()->scheduler = address;
+  cprintf("uthread_init: pid=%d scheduler=0x%x\n", myproc()->pid, address);
+  return 0;
+}

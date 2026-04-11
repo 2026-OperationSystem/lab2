@@ -56,6 +56,15 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
+    // User-level thread redirection
+    if(myproc() != 0 && (tf->cs & 3) == DPL_USER && myproc()->scheduler != 0) {
+      if(tf->eip >= 0x100) { // Only redirect if not already in scheduler code
+        tf->esp -= 4;
+        *((uint*)tf->esp) = tf->eip;
+        tf->eip = myproc()->scheduler;
+        return; // Don't yield kernel thread if we switched user threads
+      }
+    }
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
@@ -99,13 +108,10 @@ trap(struct trapframe *tf)
   }
 
   // Force process exit if it has been killed and is in user space.
-  // (If it is still executing in the kernel, let it keep running
-  // until it gets to the regular system call return.)
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
 
   // Force process to give up CPU on clock tick.
-  // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER)
     yield();

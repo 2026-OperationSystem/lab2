@@ -164,6 +164,9 @@ _forktest: forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
+_uthread: uthread_switch.o uthread1.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread uthread_switch.o uthread1.o $(ULIB)
+	$(OBJDUMP) -S _uthread > uthread.asm
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
 
@@ -192,6 +195,7 @@ UPROGS=\
 	_testwait\
 	_team1id\
 	_hello\
+	_uthread\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
