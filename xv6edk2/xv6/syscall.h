@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_exit2  22
 #define SYS_wait2  23
+#define SYS_uthread_init 24

@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set timeout 5
+spawn make qemu-nox CPUS=1
+expect "init: starting sh"
+send "uthread\r"
+expect "no runnable threads"
+send "\x01x"
