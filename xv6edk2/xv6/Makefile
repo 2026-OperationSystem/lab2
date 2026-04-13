@@ -164,9 +164,11 @@ _forktest: forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
-_uthread: uthread_switch.o uthread1.o
-	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread uthread_switch.o uthread1.o $(ULIB)
-	$(OBJDUMP) -S _uthread > uthread.asm
+_uthread1: uthread_switch.o uthread1.o $(ULIB)
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 --wrap uthread_init -o _uthread1 uthread_switch.o uthread1.o $(ULIB)
+	$(OBJDUMP) -S _uthread1 > uthread1.asm
+	$(OBJDUMP) -t _uthread1 | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > uthread1.sym
+
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
 
@@ -195,7 +197,7 @@ UPROGS=\
 	_testwait\
 	_team1id\
 	_hello\
-	_uthread\
+	_uthread1\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

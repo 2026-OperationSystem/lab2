@@ -130,7 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_exit2]   sys_exit2,
-[SYS_wait2]   sys_wait2,  
+[SYS_wait2]   sys_wait2,
 [SYS_uthread_init] sys_uthread_init,
 };
 

@@ -92,7 +92,6 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->scheduler = 0;
 
   release(&ptable.lock);
 
@@ -627,4 +626,12 @@ wait2(int *status)
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
+}
+
+// Register user-level scheduler: store the scheduler function address in the PCB.
+int
+uthread_init(int addr)
+{
+  myproc()->scheduler = (uint)addr;
+  return 0;
 }
