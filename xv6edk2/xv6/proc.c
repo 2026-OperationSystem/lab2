@@ -92,6 +92,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->scheduler = 0; // Ensure scheduler is cleared for new/reused processes
 
   release(&ptable.lock);
 
