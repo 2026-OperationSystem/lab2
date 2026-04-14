@@ -56,13 +56,11 @@ trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
-    // 유저 레벨 스케줄러가 등록되어 있고, 유저 모드에서 인터럽트된 경우
-    // 트랩 복귀 시 유저 레벨 스케줄러가 실행되도록 trapframe을 수정
     if(myproc() != 0 && myproc()->scheduler != 0 &&
        (tf->cs & 3) == DPL_USER) {
       tf->esp -= 4;
-      *(uint*)(tf->esp) = tf->eip;   // 현재 eip를 스택에 push (복귀 주소)
-      tf->eip = myproc()->scheduler; // 스케줄러로 리다이렉트
+      *(uint*)(tf->esp) = tf->eip;
+      tf->eip = myproc()->scheduler;
     }
     break;
   case T_IRQ0 + IRQ_IDE:

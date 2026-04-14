@@ -594,8 +594,8 @@ wait2(int *status)
   struct proc *curproc = myproc();
 
   acquire(&ptable.lock);
-  for(;;){ // 좀비찾기
-    // Scan through table looking for exited children.
+  for(;;){
+    // Scan through table looking for zombie children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
