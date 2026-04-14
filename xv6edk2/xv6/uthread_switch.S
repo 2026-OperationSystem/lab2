@@ -70,40 +70,64 @@ asm_timer_shim:
 	ret
 
 /*
- * Context Switcher with Guaranteed Safety checks
+ * Context Switcher — 커널 레벨 스택 교환 버전
+ *
+ * [변경 사항]
+ * 기존: thread_switch 가 유저 공간에서 직접 %esp 를 교체 (Ring 3)
+ * 변경: sys_uthread_switch (SYS 25) 시스템 콜로 커널이 tf->esp 를 교체 (Ring 0)
+ *
+ * [동작 흐름]
+ *   1. pushal + current_thread->sp 저장   (유저 공간)
+ *   2. 최초 스위치 시 메인 스레드 비활성화 (유저 공간)
+ *   3. next_thread->sp 를 push 후 int $64 (커널 진입)
+ *      커널 sys_uthread_switch: tf->esp = next_thread->sp
+ *      iret: 하드웨어가 esp = next_thread->sp 로 자동 복원
+ *   4. 이후 코드는 next_thread 의 스택 위에서 실행
+ *   5. 신규 스레드 스택 패칭                (유저 공간)
+ *   6. current_thread 갱신 + popal + ret   (유저 공간)
  */
 thread_switch:
-	/* 1. Save current state */
+	/* 1. 현재 스레드 레지스터 저장 및 sp 기록 */
 	pushal
 	movl current_thread, %eax
 	movl %esp, (%eax)
 
-	/* 2. Disable main thread on very first switch */
+	/* 2. 최초 스위치: 메인 스레드를 FREE 로 비활성화 */
 	cmpl $0, first_switch
 	jnz 2f
 	movl $0, 0x2004(%eax)
 	movl $1, first_switch
 2:
-	/* 3. Load next thread's stack */
-	movl next_thread, %eax
-	movl (%eax), %esp
+	/* 3. 커널 시스템 콜로 스택 포인터 교체
+	 *    next_thread->sp 를 인자로 push 한 뒤 int $64 직접 호출.
+	 *    usys.S 스텁을 거치지 않으므로 tf->esp 가 바로 인자를 가리킴.
+	 *    커널 sys_uthread_switch: tf->esp = next_thread->sp
+	 *    iret 복귀 후: esp = next_thread->sp (하드웨어 자동 복원) */
+	movl next_thread, %edx
+	movl (%edx), %edx          /* edx = next_thread->sp */
+	pushl %edx                 /* 커널에 전달할 인자 push */
+	movl $25, %eax             /* SYS_uthread_switch = 25 */
+	int $64
+	/* ── 이 지점부터 esp = next_thread->sp (next 스레드 스택 위) ── */
 
-	/* 4. [CRITICAL] Safe Dynamic Stack Patching 
-	      Check for _uthread_exit signature to avoid double-patching. */
+	/* 4. 신규 스레드 스택 패칭
+	 *    thread_create 로 막 생성된 스레드(sp == base+8160)일 때
+	 *    _uthread_exit 를 반환 주소로 삽입한다. */
+	movl next_thread, %eax
+
 	movl 36(%esp), %edx
-	cmpl $_uthread_exit, %edx
+	cmpl $_uthread_exit, %edx  /* 이미 패칭됐으면 스킵 */
 	je 5f
 
-	/* Verify fresh SP from thread_create (Base + 8160) */
 	movl %eax, %edx
 	addl $8160, %edx
-	cmpl %esp, %edx
+	cmpl %esp, %edx            /* 신규 스레드(sp == base+8160)인지 확인 */
 	jne 5f
 
-	/* Shift and Patch stack */
+	/* 스택을 4바이트 확장하고 9 단어를 아래로 shift */
 	subl $4, %esp
-	movl %esp, (%eax) 
-	
+	movl %esp, (%eax)          /* next_thread->sp 갱신 */
+
 	movl $9, %ecx
 	movl %esp, %edi
 	lea 4(%edi), %esi
@@ -113,11 +137,11 @@ thread_switch:
 	addl $4, %esi
 	addl $4, %edi
 	loop 3b
-	
-	movl $_uthread_exit, (%edi)
+
+	movl $_uthread_exit, (%edi) /* 반환 주소로 _uthread_exit 삽입 */
 
 5:
-	/* 5. Update pointer and restore */
+	/* 5. current_thread 갱신 후 next 스레드 레지스터 복원 및 실행 */
 	movl %eax, current_thread
 	popal
 	ret

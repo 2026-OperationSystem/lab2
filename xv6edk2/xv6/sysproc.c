@@ -118,3 +118,30 @@ sys_uthread_init(void)
     return -1;
   return uthread_init(addr);
 }
+
+/*
+ * sys_uthread_switch - 커널 레벨 유저 스레드 컨텍스트 스위치
+ *
+ * thread_switch (uthread_switch.S) 가 usys.S 스텁 없이 int $64 를 직접 호출한다.
+ * 이 경우 인자는 tf->esp 가 아니라 tf->esp 자체에 push 되어 있으므로
+ * argint(0) 의 +4 오프셋 없이 tf->esp 를 직접 읽는다.
+ *
+ * 동작:
+ *   1. tf->esp (= thread_switch 가 pushl 한 next_thread->sp 값) 를 읽는다.
+ *   2. tf->esp 를 그 값으로 덮어쓴다.
+ *   3. syscall 복귀 시 iret 가 tf->esp 를 하드웨어로 복원 → 다음 스레드 스택으로 전환.
+ */
+int
+sys_uthread_switch(void)
+{
+  uint next_sp;
+  struct proc *p = myproc();
+
+  /* 인자는 tf->esp 가 가리키는 주소에 push 되어 있다 (call 없이 int $64 직접 호출) */
+  if(fetchint(p->tf->esp, (int*)&next_sp) < 0)
+    return -1;
+
+  /* 다음 스레드의 스택 포인터로 교체 — iret 이 이 값을 esp 에 복원한다 */
+  p->tf->esp = next_sp;
+  return 0;
+}

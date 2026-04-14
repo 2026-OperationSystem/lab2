@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wsl -e bash -c \"cat /etc/os-release | head -3\")"
+      "Bash(wsl -e bash -c \"cat /etc/os-release | head -3\")",
+      "Bash(pandoc \"C:/Users/whgkd/OneDrive/바탕 화면/lab_1 보고서.docx\" -o /tmp/lab1_report.md)",
+      "Read(//tmp/**)",
+      "Bash(python3:*)",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(powershell:*)",
+      "Bash(npm list:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(npm root:*)",
+      "Bash(NODE_PATH=\"C:/Users/whgkd/AppData/Roaming/npm/node_modules\" node:*)"
     ]
   }
 }

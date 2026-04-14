@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 extern int sys_exit2(void);
 extern int sys_wait2(void);
 extern int sys_uthread_init(void);
+extern int sys_uthread_switch(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -131,7 +132,8 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_exit2]   sys_exit2,
 [SYS_wait2]   sys_wait2,
-[SYS_uthread_init] sys_uthread_init,
+[SYS_uthread_init]   sys_uthread_init,
+[SYS_uthread_switch] sys_uthread_switch,
 };
 
 void

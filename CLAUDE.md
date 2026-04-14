@@ -60,6 +60,10 @@ cd xv6edk2
 - 스레드 스택 레이아웃: 스택 상단에 반환 주소, 그 아래 32바이트 레지스터 저장 공간
 - `thread_switch`는 `current_thread->sp` ↔ `next_thread->sp` 간의 컨텍스트 스위치를 수행해야 함
 
+> **[중요] `uthread1.c` 는 절대 수정하지 말 것.**
+> 커널 레벨 컨텍스트 스위칭 구현 시에도 `uthread1.c` 의 `struct thread`, `thread_schedule`, `thread_create` 등은 그대로 유지해야 한다.
+> 모든 변경은 `uthread_switch.S`, 커널 파일(`syscall.h`, `syscall.c`, `sysproc.c`, `defs.h`)에만 적용한다.
+
 ### 주요 커널 자료구조
 
 - **`struct proc`** (`proc.h`): PCB — `sz`, `pgdir`, `tf`(트랩프레임), `context`, `state`, `xstate`(추가됨)
