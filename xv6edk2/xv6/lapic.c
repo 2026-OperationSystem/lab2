@@ -66,7 +66,7 @@ lapicinit(void)
   // TICR would be calibrated using an external time source.
   lapicw(TDCR, X1);
   lapicw(TIMER, PERIODIC | (T_IRQ0 + IRQ_TIMER));
-  lapicw(TICR, 200000); // Final stabilized value for robust interleaving
+  lapicw(TICR, 400000); // Final stabilized value for robust interleaving
 
   // Disable logical interrupt lines.
   lapicw(LINT0, MASKED);

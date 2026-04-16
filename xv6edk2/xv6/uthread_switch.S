@@ -1,73 +1,48 @@
-	.text
-
-/*
- * uthread_switch.S
- * 
- * Ultra-stable defense-in-depth version:
- * 1. Atomic-like stack patching to prevent Trap 14 during racing interrupts.
- * 2. Enhanced Shim to prevent scheduler re-entrancy issues.
- * 3. Consistent interleaving with stabilized 250,000 TICR.
- */
+.text
 
 .globl _uthread_exit
 .globl __wrap_uthread_init
 .globl thread_switch
-.globl asm_timer_shim
 
-/* 
- * Address 0: Thread Exit Stub
+/*
+ * Thread Exit Stub
+ * Called when a thread function returns.
  */
 _uthread_exit:
 	movl current_thread, %eax
 	testl %eax, %eax
 	jz 1f
-	movl $0, 0x2004(%eax)   /* state = FREE */
-	
+	movl $0, 0x2004(%eax)           /* state = FREE */
+
 	movl $dummy_thread, current_thread
-	
-	/* Call shim to ensure immediate rescheduling */
-	call asm_timer_shim
-	jmp _uthread_exit
+	movl $0, dummy_thread+0x2004    /* dummy->state = FREE (prevent spurious reschedule) */
+
+	movl real_scheduler, %edx
+	testl %edx, %edx
+	jz 1f
+	call *%edx                      /* call thread_schedule directly */
+	jmp _uthread_exit               /* if we return, loop */
 
 1:	pushl $0
 	call exit
 
-/* 
- * Intercept uthread_init
+/*
+ * Intercept uthread_init to save scheduler pointer.
+ * Pass the real scheduler directly as the timer callback (no shim).
  */
 __wrap_uthread_init:
 	movl 4(%esp), %eax
-	movl %eax, real_scheduler
-	
-	pushl $asm_timer_shim
+	movl %eax, real_scheduler       /* save for _uthread_exit */
+
+	pushl %eax                      /* pass real scheduler to uthread_init */
 	call __real_uthread_init
 	addl $4, %esp
 	ret
 
 /*
- * ASM Scheduler Shim
+ * thread_switch: context switch from current_thread to next_thread.
+ * Uses kernel syscall 25 (via int $64) to swap stacks.
  */
-asm_timer_shim:
-	pushal
-	movl current_thread, %eax
-	testl %eax, %eax
-	jz 3f
-	
-	cmpl $0, 0x2004(%eax)
-	je 3f
-
-	cmpl $1, 0x2004(%eax)
-	jne 3f
-	movl $2, 0x2004(%eax)
-3:
-	movl real_scheduler, %edx
-	testl %edx, %edx
-	jz 4f
-	call *%edx
-4:
-	popal
-	ret
-
 thread_switch:
 	pushal
 	movl current_thread, %eax
@@ -75,19 +50,19 @@ thread_switch:
 
 	cmpl $0, first_switch
 	jnz 2f
-	movl $0, 0x2004(%eax)
+	movl $0, 0x2004(%eax)   /* mark main thread FREE so it's never rescheduled */
 	movl $1, first_switch
 2:
 	movl next_thread, %edx
 	movl (%edx), %edx          /* edx = next_thread->sp */
-	pushl %edx                 
-	movl $25, %eax             
+	pushl %edx
+	movl $25, %eax
 	int $64
 
 	movl next_thread, %eax
 
 	movl 36(%esp), %edx
-	cmpl $_uthread_exit, %edx  
+	cmpl $_uthread_exit, %edx
 	je 5f
 
 	movl %eax, %edx
@@ -119,5 +94,5 @@ thread_switch:
 .data
 .align 4
 real_scheduler: .long 0
-first_switch: .long 0
-dummy_thread: .space 8200
+first_switch:   .long 0
+dummy_thread:   .space 8200
